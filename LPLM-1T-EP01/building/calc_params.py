@@ -2,6 +2,7 @@
 import torch
 import sys
 import os
+from transformers.utils import is_flash_attn_2_available
 
 # Add current directory to path to allow relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -10,6 +11,8 @@ from configuration_lplm_ep01 import LPLMEP01Config
 from modeling_lplm_ep01 import LPLMEP01ForConditionalGeneration
 
 def count_parameters(model):
+    if model is None:
+        return 0
     return sum(p.numel() for p in model.parameters())
 
 def format_params(n):
@@ -21,9 +24,73 @@ def format_params(n):
         return f"{n / 1e6:.2f}M"
     return str(n)
 
+def iter_moe_layers(language_model):
+    decoder = getattr(language_model, "model", None)
+    layers = getattr(decoder, "layers", [])
+    for layer in layers:
+        mlp = getattr(layer, "mlp", None)
+        if getattr(mlp, "experts", None) is not None:
+            yield mlp
+
+def active_moe_breakdown(model, config):
+    num_experts_per_tok = config.text_config.num_experts_per_tok
+    moe_layers = list(iter_moe_layers(model.language_model))
+    routed_experts_params = 0
+    shared_experts_params = 0
+    inactive_routed_params = 0
+    one_routed_expert_params = None
+
+    for moe_layer in moe_layers:
+        expert_counts = [
+            count_parameters(expert)
+            for expert in getattr(moe_layer, "experts", [])
+            if expert is not None
+        ]
+        if expert_counts:
+            routed_experts_params += sum(expert_counts)
+            if one_routed_expert_params is None:
+                one_routed_expert_params = expert_counts[0]
+
+            active_expert_count = getattr(
+                moe_layer, "num_experts_per_tok", num_experts_per_tok
+            )
+            if active_expert_count is None:
+                active_expert_count = len(expert_counts)
+            active_expert_count = min(active_expert_count, len(expert_counts))
+
+            if len(set(expert_counts)) == 1:
+                active_routed_params = active_expert_count * expert_counts[0]
+            else:
+                active_routed_params = round(
+                    sum(expert_counts) * active_expert_count / len(expert_counts)
+                )
+            inactive_routed_params += sum(expert_counts) - active_routed_params
+
+        shared_experts_params += count_parameters(
+            getattr(moe_layer, "shared_experts", None)
+        )
+
+    return {
+        "num_moe_layers": len(moe_layers),
+        "one_routed_expert_params": one_routed_expert_params,
+        "total_expert_params": routed_experts_params + shared_experts_params,
+        "inactive_routed_params": inactive_routed_params,
+    }
+
+def make_count_config(variant):
+    config = LPLMEP01Config(variant=variant)
+    vision_attn = getattr(config.vision_config, "_attn_implementation", None)
+    if vision_attn == "flash_attention_2" and not is_flash_attn_2_available():
+        config.vision_config._attn_implementation = "eager"
+        print(
+            "Parameter-count override: vision attention flash_attention_2 -> eager "
+            "(flash_attn is not installed)."
+        )
+    return config
+
 def run_calc(variant="1T"):
     print(f"--- Calculating parameters for variant: {variant} ---")
-    config = LPLMEP01Config(variant=variant)
+    config = make_count_config(variant)
     
     # Use meta device to avoid memory allocation
     with torch.device("meta"):
@@ -39,55 +106,18 @@ def run_calc(variant="1T"):
     print(f"MM Projector: {format_params(projector_params)} ({projector_params:,})")
     print(f"Language Model: {format_params(language_params)} ({language_params:,})")
     
-    # Estimate active parameters per token
-    # Active = Vision Tower (all) + Projector (all) + Language Model (Embeddings + Attn + Active Experts + Norms)
-    # This is a bit complex to calculate automatically without traversing the module tree specifically.
-    
     print("\nBreakdown of Language Model:")
-    # We can calculate active parameters per layer for MoE
-    # For DeepSeek-V3 MoE:
-    # Active per MoE layer = Shared Experts + num_experts_per_tok * Routed Expert
-    
     num_layers = config.text_config.num_hidden_layers
-    num_experts_per_tok = config.text_config.num_experts_per_tok
-    
-    # Calculate size of one routed expert
-    # One expert has gate_proj, up_proj, down_proj
-    # gate_proj: hidden_size -> moe_intermediate_size
-    # up_proj: hidden_size -> moe_intermediate_size
-    # down_proj: moe_intermediate_size -> hidden_size
-    h = config.text_config.hidden_size
-    mi = config.text_config.moe_intermediate_size
-    one_expert_params = 3 * h * mi # gate, up, down
-    
-    # Shared experts
-    n_shared = config.text_config.n_shared_experts
-    shared_params = n_shared * one_expert_params if n_shared else 0
-    
-    # Routed experts total
-    n_routed = config.text_config.n_routed_experts
-    routed_total_params = n_routed * one_expert_params if n_routed else 0
-    
-    # Active experts per layer
-    active_experts_params = (num_experts_per_tok * one_expert_params) + shared_params
-    
-    # Non-expert params per layer (Attn, Norms, etc.)
-    # Rough estimate: Layer params - total expert params
-    # We'll just do it more simply:
-    
-    # Calculate non-MoE params (Embeddings + Attn + Norms + Gate + etc.)
-    # Total = Embeddings + Layers * (Attn + Norms + Experts) + Head
-    # Active = Embeddings + Layers * (Attn + Norms + Active Experts) + Head
-    
-    inactive_params_per_layer = ((n_routed - num_experts_per_tok)
-                                 * one_expert_params) if n_routed else 0
-    total_inactive = num_layers * inactive_params_per_layer
-    
-    active_params = total_params - total_inactive
+    moe_breakdown = active_moe_breakdown(model, config)
+    active_params = total_params - moe_breakdown["inactive_routed_params"]
     
     print(f"Active Parameters per token (approx): {format_params(active_params)} ({active_params:,})")
-    print(f"One Routed Expert: {format_params(one_expert_params)}")
-    print(f"Total Experts (all layers): {format_params(num_layers * (routed_total_params + shared_params))}")
+    print(f"MoE Layers: {moe_breakdown['num_moe_layers']} / {num_layers}")
+    if moe_breakdown["one_routed_expert_params"] is None:
+        print("One Routed Expert: N/A")
+    else:
+        print(f"One Routed Expert: {format_params(moe_breakdown['one_routed_expert_params'])}")
+    print(f"Total Experts (all MoE layers): {format_params(moe_breakdown['total_expert_params'])}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

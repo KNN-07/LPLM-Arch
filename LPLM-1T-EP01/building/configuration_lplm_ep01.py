@@ -36,7 +36,7 @@ class LPLMEP01VisionConfig(PretrainedConfig):
             # Other parameters
             ignore_index: int = -100,
             media_placeholder_token_id: int = 163605,
-            pad_token_id: int = 0,
+            pad_token_id: int = 163839,
             use_unified_vision_chunk: bool = True,
             video_placeholder="<|lplm_ep01_video_placeholder|>",
             text_hidden_size=7168,
@@ -54,7 +54,6 @@ class LPLMEP01VisionConfig(PretrainedConfig):
         self.merge_kernel_size = merge_kernel_size
         self.video_attn_type = video_attn_type
         self.merge_type = merge_type
-        self._attn_implementation = _attn_implementation
 
         # MM Projector config
         self.mm_projector_type = mm_projector_type
@@ -62,7 +61,8 @@ class LPLMEP01VisionConfig(PretrainedConfig):
         self.projector_hidden_act = projector_hidden_act
         self.projector_ln_eps = projector_ln_eps
         self.text_hidden_size = text_hidden_size
-        super().__init__(**vision_config_kwargs)
+        super().__init__(pad_token_id=pad_token_id, **vision_config_kwargs)
+        self._attn_implementation = _attn_implementation
 
 
 class LPLMEP01Config(PretrainedConfig):
@@ -82,7 +82,7 @@ class LPLMEP01Config(PretrainedConfig):
         # Other parameters
         ignore_index: int = -100,
         media_placeholder_token_id: int = 163605,
-        pad_token_id: int = 0,
+        pad_token_id: int = 163839,
         use_unified_vision_chunk: bool = True,
         video_placeholder="<|lplm_ep01_video_placeholder|>",
         variant: str = "1T", # "1T" or "300M"
@@ -90,33 +90,130 @@ class LPLMEP01Config(PretrainedConfig):
     ):
         if variant == "1T":
             text_defaults = {
-                "hidden_size": 8192,
-                "num_hidden_layers": 80,
-                "intermediate_size": 24576,
-                "num_attention_heads": 128,
+                "model_type": "kimi_k2",
+                "vocab_size": 163840,
+                "hidden_size": 7168,
+                "num_hidden_layers": 61,
+                "intermediate_size": 18432,
+                "num_attention_heads": 64,
+                "num_key_value_heads": 64,
                 "n_shared_experts": 1,
-                "n_routed_experts": 512,
+                "n_routed_experts": 384,
                 "num_experts_per_tok": 8,
                 "moe_intermediate_size": 2048,
+                "moe_layer_freq": 1,
+                "first_k_dense_replace": 1,
+                "num_nextn_predict_layers": 0,
+                "ep_size": 1,
+                "routed_scaling_factor": 2.827,
+                "kv_lora_rank": 512,
+                "q_lora_rank": 1536,
+                "qk_nope_head_dim": 128,
+                "qk_rope_head_dim": 64,
+                "v_head_dim": 128,
+                "topk_method": "noaux_tc",
+                "n_group": 1,
+                "topk_group": 1,
+                "norm_topk_prob": True,
+                "scoring_func": "sigmoid",
+                "aux_loss_alpha": 0.001,
+                "seq_aux": True,
+                "hidden_act": "silu",
+                "max_position_embeddings": 262144,
+                "initializer_range": 0.02,
+                "rms_norm_eps": 1e-5,
+                "use_cache": True,
+                "pad_token_id": 163839,
+                "bos_token_id": 163584,
+                "eos_token_id": 163586,
+                "pretraining_tp": 1,
+                "tie_word_embeddings": False,
+                "rope_theta": 50000.0,
+                "rope_scaling": {
+                    "type": "yarn",
+                    "factor": 64.0,
+                    "original_max_position_embeddings": 4096,
+                    "beta_fast": 32.0,
+                    "beta_slow": 1.0,
+                    "mscale": 1.0,
+                    "mscale_all_dim": 1.0,
+                },
+                "attention_bias": False,
+                "attention_dropout": 0.0,
             }
             vision_defaults = {
-                "vt_hidden_size": 1536,
-                "vt_num_hidden_layers": 40,
-                "text_hidden_size": 8192,
+                "patch_size": 14,
+                "init_pos_emb_height": 64,
+                "init_pos_emb_width": 64,
+                "init_pos_emb_time": 4,
+                "pos_emb_type": "divided_fixed",
+                "vt_hidden_size": 1152,
+                "vt_num_hidden_layers": 27,
+                "vt_num_attention_heads": 16,
+                "vt_intermediate_size": 4304,
+                "merge_kernel_size": [2, 2],
+                "video_attn_type": "spatial_temporal",
+                "merge_type": "sd2_tpool",
+                "_attn_implementation": "flash_attention_2",
+                "mm_projector_type": "patchmerger",
+                "mm_hidden_size": 1152,
+                "projector_hidden_act": "gelu",
+                "projector_ln_eps": 1e-5,
+                "text_hidden_size": 7168,
             }
         elif variant == "300M":
             text_defaults = {
-                "hidden_size": 1024,
-                "num_hidden_layers": 24,
-                "intermediate_size": 4096,
-                "num_attention_heads": 16,
+                "vocab_size": 163840,
+                "hidden_size": 640,
+                "num_hidden_layers": 15,
+                "intermediate_size": 1792,
+                "num_attention_heads": 10,
+                "num_key_value_heads": 10,
                 "n_shared_experts": None,
                 "n_routed_experts": None,
+                "num_experts_per_tok": None,
+                "moe_intermediate_size": 1024,
+                "moe_layer_freq": 1,
+                "first_k_dense_replace": 0,
+                "num_nextn_predict_layers": 0,
+                "routed_scaling_factor": 1.0,
+                "kv_lora_rank": 128,
+                "q_lora_rank": None,
+                "qk_nope_head_dim": 64,
+                "qk_rope_head_dim": 32,
+                "v_head_dim": 64,
+                "topk_method": "greedy",
+                "n_group": 1,
+                "topk_group": 1,
+                "norm_topk_prob": False,
+                "scoring_func": "softmax",
+                "aux_loss_alpha": 0.0,
+                "seq_aux": False,
+                "hidden_act": "silu",
+                "max_position_embeddings": 32768,
+                "initializer_range": 0.02,
+                "rms_norm_eps": 1e-5,
+                "use_cache": True,
+                "pad_token_id": 163839,
+                "bos_token_id": 163584,
+                "eos_token_id": 163586,
+                "pretraining_tp": 1,
+                "tie_word_embeddings": False,
+                "rope_theta": 50000.0,
+                "rope_scaling": {
+                    "type": "linear",
+                    "factor": 1.0,
+                },
+                "attention_bias": False,
+                "attention_dropout": 0.0,
             }
             vision_defaults = {
-                "vt_hidden_size": 768,
-                "vt_num_hidden_layers": 12,
-                "text_hidden_size": 1024,
+                "vt_hidden_size": 384,
+                "vt_num_hidden_layers": 8,
+                "vt_num_attention_heads": 8,
+                "vt_intermediate_size": 1536,
+                "mm_hidden_size": 384,
+                "text_hidden_size": 640,
             }
         else:
             text_defaults = {}
