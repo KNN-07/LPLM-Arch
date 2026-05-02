@@ -90,7 +90,7 @@ class LPLMEP01Config(PretrainedConfig):
     ):
         if variant == "1T":
             text_defaults = {
-                "model_type": "kimi_k2",
+                "model_type": "lplm_ep01_text",
                 "vocab_size": 163840,
                 "hidden_size": 7168,
                 "num_hidden_layers": 61,
@@ -163,7 +163,7 @@ class LPLMEP01Config(PretrainedConfig):
             }
         elif variant == "300M":
             text_defaults = {
-                "model_type": "kimi_k2",
+                "model_type": "lplm_ep01_text",
                 "vocab_size": 163840,
                 "hidden_size": 576,
                 "num_hidden_layers": 14,

@@ -8,7 +8,7 @@ model:
   input_checkpoint: outputs/lplm-ep01-fineweb/checkpoint-final
   output_dir: outputs/post_training/cpt_domain_v1
   train_scope: text
-  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  tokenizer_name_or_path: LPLM-1T-EP01/building/tokenizer
 
 data:
   mixture_file: templates/data_mixture.yaml

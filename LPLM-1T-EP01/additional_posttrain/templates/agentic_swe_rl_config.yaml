@@ -8,8 +8,8 @@ model:
   input_checkpoint: outputs/post_training/pref_v1
   reference_checkpoint: outputs/post_training/pref_v1
   output_dir: outputs/additional_posttrain/agentic_swe_hrl_v1
-  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
-  chat_template: LPLM-1T-EP01/post_training/templates/chat_template.kimi.jinja
+  tokenizer_name_or_path: LPLM-1T-EP01/building/tokenizer
+  chat_template: LPLM-1T-EP01/post_training/templates/chat_template.lplm.jinja
 
 environment:
   runner: codex_swe_sandbox

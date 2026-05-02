@@ -11,7 +11,6 @@ import argparse
 import logging
 import os
 import re
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -40,7 +39,7 @@ FINEWEB_DUMP_RE = re.compile(r"^CC-MAIN-(\d{4})-(\d{2})$")
 
 
 class PackedFineWebDataset(IterableDataset):
-    """Stream FineWeb records, tokenize with Kimi tokenizer, and pack blocks."""
+    """Stream FineWeb records, tokenize them, and pack causal-LM blocks."""
 
     def __init__(
         self,
@@ -213,8 +212,8 @@ def parse_args() -> argparse.Namespace:
         "--tokenizer_name_or_path",
         default=None,
         help=(
-            "Optional tokenizer path or Hub id. Defaults to the local Kimi "
-            "tokenizer under model_root/building/source/tokenizer."
+            "Optional tokenizer path or Hub id. Defaults to the local "
+            "tokenizer under model_root/building/tokenizer."
         ),
     )
     parser.add_argument("--split", default="train")
@@ -369,31 +368,28 @@ def is_git_lfs_pointer(path: Path) -> bool:
 
 def prepare_tokenizer_dir(model_root: Path, output_dir: Path) -> Path:
     configure_hf_dynamic_module_cache(output_dir)
-    tokenizer_dir = model_root / "building" / "source" / "tokenizer"
+    tokenizer_dir = model_root / "building" / "tokenizer"
+    required_files = (
+        "tokenizer_config.json",
+        "tokenization_lplm.py",
+        "tool_declaration_ts.py",
+        "tiktoken.model",
+    )
+    missing = [filename for filename in required_files if not (tokenizer_dir / filename).exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Local tokenizer directory is incomplete: {tokenizer_dir}. "
+            f"Missing: {', '.join(missing)}."
+        )
+
     vocab_file = tokenizer_dir / "tiktoken.model"
     if is_git_lfs_pointer(vocab_file):
         raise RuntimeError(
-            f"{vocab_file} is still a Git LFS pointer. Fetch the real Kimi "
+            f"{vocab_file} is still a Git LFS pointer. Fetch the real "
             "tokenizer asset with `git lfs pull`, or pass "
-            "--tokenizer_name_or_path with a complete Kimi tokenizer path/Hub id."
+            "--tokenizer_name_or_path with a complete tokenizer path/Hub id."
         )
-
-    helper_file = tokenizer_dir / "tool_declaration_ts.py"
-    if helper_file.exists():
-        return tokenizer_dir
-
-    runtime_dir = output_dir / "runtime" / "kimi_tokenizer"
-    runtime_dir.mkdir(parents=True, exist_ok=True)
-    for filename in ("tokenizer_config.json", "tokenization_kimi.py", "tiktoken.model"):
-        shutil.copy2(tokenizer_dir / filename, runtime_dir / filename)
-
-    source_helper = model_root / "building" / "source" / "misc" / "tool_declaration_ts.py"
-    if not source_helper.exists():
-        raise FileNotFoundError(
-            "Kimi tokenizer helper tool_declaration_ts.py was not found."
-        )
-    shutil.copy2(source_helper, runtime_dir / "tool_declaration_ts.py")
-    return runtime_dir
+    return tokenizer_dir
 
 
 def add_model_source_to_path(model_root: Path) -> None:

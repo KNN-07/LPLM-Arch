@@ -7,7 +7,7 @@
         {% if content['type'] == 'image' or content['type'] == 'image_url' -%}
           <|media_begin|>image<|media_content|><|media_pad|><|media_end|>
         {% elif content['type'] == 'video' or content['type']== 'video_url'-%}
-          <|kimi_k25_video_placeholder|>
+          <|lplm_ep01_video_placeholder|>
         {% else -%}
           {{ content['text'] }}
         {%- endif -%}
@@ -38,7 +38,7 @@
 
 
 {%- set preserve_thinking = preserve_thinking | default(false) -%}
-{# Find last non-tool-call assistant message. If preserve_thinking, keep -1 so hist is empty and all msgs use suffix (retain reasoning). #}
+{# Find last non-tool-call assistant message. If preserve_thinking, keep -1 so hist is empty and all msgs use suffix. #}
 {%- set ns = namespace(last_non_tool_call_assistant_msg=-1) -%}
 {%- if not preserve_thinking -%}
 {%- for idx in range(messages|length-1, -1, -1) -%}
@@ -49,7 +49,7 @@
 {%- endfor -%}
 {%- endif -%}
 
-{# split all messages into history & suffix, reasoning_content in suffix should be reserved.#}
+{# Split all messages into history and suffix. Reasoning content in suffix can be preserved. #}
 {%- set hist_msgs = messages[:ns.last_non_tool_call_assistant_msg+1] -%}
 {%- set suffix_msgs = messages[ns.last_non_tool_call_assistant_msg+1:] -%}
 
@@ -61,7 +61,6 @@
   {%- endif -%}
 {%- endif -%}
 
-  
 {%- for message in hist_msgs -%}
   {{set_roles(message)}}
   {%- if message['role'] == 'assistant' -%}
@@ -100,7 +99,6 @@
   {%- endif -%}
   <|im_end|>
 {%- endfor -%}
-
 
 {%- if add_generation_prompt -%}
   <|im_assistant|>assistant<|im_middle|>

@@ -21,7 +21,6 @@ from common import (
     load_tokenizer,
     make_training_args,
     read_jsonl_files,
-    render_chat,
     resolve_existing_patterns,
     resolve_path,
     setup_stage,

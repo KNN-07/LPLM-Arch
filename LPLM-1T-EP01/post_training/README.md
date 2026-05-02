@@ -7,7 +7,7 @@ and safety variants.
 Recommended sequence:
 
 1. Continue pretraining on curated domain mixtures.
-2. Supervised fine-tuning with the Kimi chat template.
+2. Supervised fine-tuning with the LPLM chat template.
 3. Preference optimization with DPO, SimPO, or KTO.
 4. Reasoning RL with verifiable rewards, preferably GRPO/RLVR style.
 5. Safety, tool-use, and refusal polishing.
@@ -23,7 +23,7 @@ Recommended sequence:
 | `run_stage.py` | Helper that validates stage YAML and prints the expected launch command. |
 | `common.py` | Shared config, tokenizer, model, dataset, W&B, and Trainer utilities. |
 | `train_cpt.py` | Continued pretraining trainer for JSONL text data. |
-| `train_sft.py` | SFT trainer for Kimi-rendered conversation JSONL. |
+| `train_sft.py` | SFT trainer for LPLM-rendered conversation JSONL. |
 | `train_preference.py` | SimPO, DPO, and KTO-style preference trainer. |
 | `train_reasoning_rlvr.py` | GRPO/RLVR-style trainer with verifiable rewards. |
 | `templates/stage_manifest.yaml` | End-to-end stage manifest template. |
@@ -33,7 +33,7 @@ Recommended sequence:
 | `templates/preference_config.yaml` | DPO, SimPO, and KTO stage template. |
 | `templates/reasoning_rlvr_config.yaml` | GRPO/RLVR-style reasoning template. |
 | `templates/eval_gate.yaml` | Promotion gate and evaluation template. |
-| `templates/chat_template.kimi.jinja` | Kimi chat rendering template for post-training data. |
+| `templates/chat_template.lplm.jinja` | LPLM chat rendering template for post-training data. |
 
 ## Operational Notes
 

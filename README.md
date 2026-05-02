@@ -16,20 +16,23 @@ This repository tracks model architecture experiments, configuration files, and 
 
 ```text
 .
-├── LPLM-1T-EP01/
-│   ├── README.md
-│   └── building/
-│       ├── source/
-│       └── *.py
-├── LPLM-EP02/
-├── LICENSE
-└── README.md
+|-- LPLM-1T-EP01/
+|   |-- README.md
+|   |-- additional_posttrain/
+|   |-- building/
+|   |   |-- tokenizer/
+|   |   `-- *.py
+|   |-- post_training/
+|   `-- training/
+|-- LPLM-EP02/
+|-- LICENSE
+`-- README.md
 ```
 
 ## Notes
 
 - `LPLM-1T-EP01/README.md` contains the model-card metadata for the EP01 experiment.
-- `LPLM-1T-EP01/building/source/` keeps upstream/reference source files used while preparing the LPLM implementation.
+- `LPLM-1T-EP01/building/` contains the active EP01 model/configuration code and local tokenizer assets.
 - Generated caches, local editor state, run outputs, and model checkpoints are intentionally ignored by git.
 
 ## License

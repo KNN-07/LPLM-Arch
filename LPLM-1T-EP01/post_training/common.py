@@ -7,7 +7,6 @@ import glob
 import json
 import logging
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -207,26 +206,28 @@ def is_git_lfs_pointer(path: Path) -> bool:
     return first_line == b"version https://git-lfs.github.com/spec/v1"
 
 
-def prepare_local_kimi_tokenizer(output_dir: Path) -> Path:
-    tokenizer_dir = MODEL_ROOT / "building" / "source" / "tokenizer"
+def prepare_local_tokenizer() -> Path:
+    tokenizer_dir = MODEL_ROOT / "building" / "tokenizer"
+    required_files = (
+        "tokenizer_config.json",
+        "tokenization_lplm.py",
+        "tool_declaration_ts.py",
+        "tiktoken.model",
+    )
+    missing = [filename for filename in required_files if not (tokenizer_dir / filename).exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Local tokenizer directory is incomplete: {tokenizer_dir}. "
+            f"Missing: {', '.join(missing)}."
+        )
+
     vocab_file = tokenizer_dir / "tiktoken.model"
     if is_git_lfs_pointer(vocab_file):
         raise RuntimeError(
             f"{vocab_file} is a Git LFS pointer. Run `git lfs pull` or set "
-            "model.tokenizer_name_or_path to a complete Kimi tokenizer."
+            "model.tokenizer_name_or_path to a complete tokenizer."
         )
-    if (tokenizer_dir / "tool_declaration_ts.py").exists():
-        return tokenizer_dir
-
-    runtime_dir = output_dir / "runtime" / "kimi_tokenizer"
-    runtime_dir.mkdir(parents=True, exist_ok=True)
-    for filename in ("tokenizer_config.json", "tokenization_kimi.py", "tiktoken.model"):
-        shutil.copy2(tokenizer_dir / filename, runtime_dir / filename)
-    shutil.copy2(
-        MODEL_ROOT / "building" / "source" / "misc" / "tool_declaration_ts.py",
-        runtime_dir / "tool_declaration_ts.py",
-    )
-    return runtime_dir
+    return tokenizer_dir
 
 
 def load_tokenizer(config: dict[str, Any], *, output_dir: Path) -> Any:
@@ -234,7 +235,7 @@ def load_tokenizer(config: dict[str, Any], *, output_dir: Path) -> Any:
     model_config = config.get("model", {})
     tokenizer_path = model_config.get("tokenizer_name_or_path")
     if tokenizer_path is None:
-        tokenizer_path = prepare_local_kimi_tokenizer(output_dir)
+        tokenizer_path = prepare_local_tokenizer()
     else:
         tokenizer_path = resolve_path(tokenizer_path, base_dir=POST_TRAINING_ROOT)
     tokenizer = AutoTokenizer.from_pretrained(

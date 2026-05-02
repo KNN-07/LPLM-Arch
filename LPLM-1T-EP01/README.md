@@ -4,7 +4,7 @@ license: apache-2.0
 
 # LPLM-1T-EP01
 
-LPLM-1T-EP01 is an experimental multimodal MoE model architecture with roughly 1 trillion total parameters. The language stack is aligned with the Kimi K2.5/K2.6-compatible `kimi_k2` configuration in this repository and uses DeepSeek V3-style modeling code. The vision tower is based on a MoonViT-style 3D encoder.
+LPLM-1T-EP01 is an experimental multimodal MoE model architecture with roughly 1 trillion total parameters. The language stack uses the `lplm_ep01_text` configuration in this repository and DeepSeek V3-style modeling code. The vision tower uses an LPLM 3D patch encoder.
 
 This model is experimental and not intended for production use. Training data is planned from Hugging Face open source pretraining datasets filtered from CommonCrawl.
 
@@ -17,7 +17,7 @@ This model is experimental and not intended for production use. Training data is
 | Language model parameters | 1,026,408,232,448 |
 | Vision tower parameters | 416,866,032 |
 | Multimodal projector parameters | 54,277,888 |
-| Text model type | `kimi_k2` |
+| Text model type | `lplm_ep01_text` |
 | Attention implementation | `flash_attention_2` |
 | Data type | `bfloat16` |
 

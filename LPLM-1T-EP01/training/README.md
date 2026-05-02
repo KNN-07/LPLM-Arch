@@ -1,7 +1,7 @@
 # LPLM-1T-EP01 FineWeb Pretraining
 
 `pretrain_fineweb.py` starts LPLM-1T-EP01 from random weights using the
-local EP01 config and Kimi tiktoken tokenizer. It streams Hugging Face FineWeb,
+local EP01 config and bundled tiktoken tokenizer. It streams Hugging Face FineWeb,
 packs text into fixed-length causal-LM blocks, trains with MuonClip by default,
 and reports training to W&B.
 
@@ -24,7 +24,7 @@ $env:WANDB_API_KEY = "<your-key>"
 
 The checked-in `tiktoken.model` may be a Git LFS pointer in a fresh checkout.
 Fetch the real tokenizer asset with `git lfs pull`, or pass
-`--tokenizer_name_or_path` to a complete Kimi tokenizer directory or Hub id.
+`--tokenizer_name_or_path` to a complete tokenizer directory or Hub id.
 
 ## Smoke Test
 

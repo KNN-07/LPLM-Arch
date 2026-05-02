@@ -23,7 +23,7 @@ Every record should include:
 ## SFT Conversation
 
 Use this for instruction tuning. Render with
-`templates/chat_template.kimi.jinja`.
+`templates/chat_template.lplm.jinja`.
 
 ```json
 {

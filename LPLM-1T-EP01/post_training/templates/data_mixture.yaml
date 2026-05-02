@@ -1,8 +1,8 @@
 # Dataset mixture template for CPT and SFT.
 mixture_name: ep01_post_training_mix_v1
 format: jsonl
-tokenizer: kimi
-chat_template: templates/chat_template.kimi.jinja
+tokenizer: lplm
+chat_template: templates/chat_template.lplm.jinja
 
 quality_filters:
   min_quality_score: 0.85

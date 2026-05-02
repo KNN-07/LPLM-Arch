@@ -8,8 +8,8 @@ model:
   input_checkpoint: outputs/post_training/cpt_domain_v1
   output_dir: outputs/post_training/sft_instruct_v1
   train_scope: text
-  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
-  chat_template: templates/chat_template.kimi.jinja
+  tokenizer_name_or_path: LPLM-1T-EP01/building/tokenizer
+  chat_template: templates/chat_template.lplm.jinja
 
 data:
   mixture_file: templates/data_mixture.yaml
@@ -40,7 +40,7 @@ training:
 
 behavior_targets:
   answer_style: direct
-  use_kimi_roles: true
+  use_lplm_roles: true
   tool_calls_must_be_schema_valid: true
   avoid_unrequested_reasoning_trace: true
   refusals:

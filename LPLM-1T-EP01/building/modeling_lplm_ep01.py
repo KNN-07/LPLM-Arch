@@ -303,7 +303,7 @@ class Learnable2DInterpPosEmbDivided_fixed(nn.Module):
         return out
 
 
-class MoonVision3dPatchEmbed(nn.Module):
+class LPLMVision3dPatchEmbed(nn.Module):
 
     def __init__(self,
                  out_dim: int,
@@ -474,7 +474,7 @@ class MLP2(nn.Module):
         return self.fc1(x)
 
 
-class MoonViTEncoderLayer(nn.Module):
+class LPLMVisionEncoderLayer(nn.Module):
 
     def __init__(
         self,
@@ -560,7 +560,7 @@ class MoonViTEncoderLayer(nn.Module):
         return hidden_states
 
 
-class MoonViT3dEncoder(nn.Module):
+class LPLMVision3dEncoder(nn.Module):
 
     def __init__(self,
                  hidden_dim: int,
@@ -575,7 +575,7 @@ class MoonViT3dEncoder(nn.Module):
         self.rope_2d = Rope2DPosEmbRepeated(
             block_cfg['hidden_dim'] // block_cfg['num_heads'], 512, 512)
         self.blocks = nn.ModuleList([
-            MoonViTEncoderLayer(
+            LPLMVisionEncoderLayer(
                 **block_cfg,
                 use_deterministic_attn=use_deterministic_attn)
             for _ in range(num_layers)
@@ -636,9 +636,9 @@ def tpool_patch_merger(
     return outputs
 
 
-class MoonViT3dPretrainedModel(PreTrainedModel):
+class LPLMVision3dPretrainedModel(PreTrainedModel):
     config_class = None
-    model_type = 'moonvit3d'
+    model_type = 'lplm_ep01_vision'
     _no_split_modules = ['PackingTransformer']
     _supports_flash_attn_2 = True
     _supports_sdpa = True
@@ -664,7 +664,7 @@ class MoonViT3dPretrainedModel(PreTrainedModel):
         self.patch_size = config.patch_size
         self.merge_type = config.merge_type
 
-        self.patch_embed = MoonVision3dPatchEmbed(
+        self.patch_embed = LPLMVision3dPatchEmbed(
             out_dim=config.hidden_size,
             patch_size=config.patch_size,
             pos_emb_height=config.init_pos_emb_height,
@@ -673,7 +673,7 @@ class MoonViT3dPretrainedModel(PreTrainedModel):
             pos_emb_type=config.pos_emb_type,
         )
 
-        self.encoder = MoonViT3dEncoder(hidden_dim=config.hidden_size,
+        self.encoder = LPLMVision3dEncoder(hidden_dim=config.hidden_size,
                                         num_layers=config.num_hidden_layers,
                                         block_cfg={
                                             'num_heads':
@@ -784,8 +784,8 @@ class LPLMEP01PreTrainedModel(PreTrainedModel):
     config_class = LPLMEP01Config
     base_model_prefix = "model"
     _no_split_modules = [
-        "MoonViT3dPretrainedModel",
-        "MoonViTEncoderLayer",
+        "LPLMVision3dPretrainedModel",
+        "LPLMVisionEncoderLayer",
         "DeepseekDecoderLayer",
         "PatchMergerMLP",
     ]
@@ -815,7 +815,7 @@ class LPLMEP01PreTrainedModel(PreTrainedModel):
 
 
 class VisionTowerConfig(PretrainedConfig):
-    model_type = 'moonvit3d'
+    model_type = 'lplm_ep01_vision'
 
     def __init__(self, config: LPLMEP01Config, **kwargs):
         super().__init__(**kwargs)
@@ -852,7 +852,7 @@ class LPLMEP01ForConditionalGeneration(LPLMEP01PreTrainedModel):
         super().__init__(config)
 
         vt_config = VisionTowerConfig(config.vision_config)
-        self.vision_tower = MoonViT3dPretrainedModel(vt_config)
+        self.vision_tower = LPLMVision3dPretrainedModel(vt_config)
 
         proj_config = ProjectorConfig(config.vision_config)
         if proj_config.mm_projector_type == 'identity':

@@ -1,7 +1,7 @@
 # Post-Training Strategy
 
 This plan assumes `LPLM-1T-EP01` has completed base pretraining and has a
-stable Kimi-tokenizer checkpoint. The goal is to move from a base model to
+stable tokenizer checkpoint. The goal is to move from a base model to
 instruction-following, tool-capable, safety-aware, and reasoning-specialized
 variants without losing base capability.
 
@@ -64,7 +64,7 @@ Promotion gate:
 ## Stage 2: Supervised Fine-Tuning
 
 SFT should teach the assistant interface, not overload the model with every
-possible skill. Use clean data and the Kimi chat template.
+possible skill. Use clean data and the LPLM chat template.
 
 Core SFT buckets:
 
@@ -79,7 +79,7 @@ Core SFT buckets:
 Data quality rules:
 
 - Prefer fewer high-quality examples over large noisy instruction dumps.
-- Normalize all conversations through the Kimi chat template.
+- Normalize all conversations through the LPLM chat template.
 - Keep assistant answers direct and task-solving oriented.
 - Separate reasoning traces from final answers when the target behavior needs
   hidden or private reasoning controls.

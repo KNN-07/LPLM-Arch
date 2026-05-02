@@ -209,7 +209,7 @@
   "unk_token": "[UNK]",
   "auto_map": {
     "AutoTokenizer": [
-      "tokenization_kimi.TikTokenTokenizer",
+      "tokenization_lplm.TikTokenTokenizer",
       null
     ]
   }
