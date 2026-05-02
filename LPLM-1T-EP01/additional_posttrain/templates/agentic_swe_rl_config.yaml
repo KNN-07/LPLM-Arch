@@ -1,0 +1,104 @@
+# Provenance-discounted hierarchical RL config template.
+stage:
+  id: agentic_swe_provenance_hrl_v1
+  type: agentic_swe_hierarchical_rl
+  description: Long-horizon software engineering RL with planning rewards and hint-discounted execution.
+
+model:
+  input_checkpoint: outputs/post_training/pref_v1
+  reference_checkpoint: outputs/post_training/pref_v1
+  output_dir: outputs/additional_posttrain/agentic_swe_hrl_v1
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  chat_template: LPLM-1T-EP01/post_training/templates/chat_template.kimi.jinja
+
+environment:
+  runner: codex_swe_sandbox
+  workspace_root: workspaces/agentic_swe
+  max_steps_per_attempt: 30
+  command_timeout_seconds: 120
+  reset_repo_between_attempts: true
+  allow_network: false
+  record_transcripts: true
+  record_patches: true
+  forbidden_actions:
+    - delete_tests
+    - weaken_tests
+    - fabricate_tool_output
+    - edit_unrelated_large_surface
+
+data:
+  task_paths:
+    - data/agentic_swe/human_verified/*.jsonl
+    - data/agentic_swe/synthetic/*.jsonl
+  hint_paths:
+    - data/agentic_swe/hints/*.jsonl
+  blind_prompting: true
+  mixture:
+    human_verified: 0.20
+    synthetic: 0.80
+
+planning:
+  require_plan_block: true
+  plan_tag: "<PLAN>"
+  plan_reward_weight: 0.10
+  prm:
+    type: rubric
+    checkpoint: null
+    rubric:
+      reproduces_failure: 0.20
+      localizes_relevant_area: 0.20
+      proposes_minimal_edit: 0.20
+      includes_verification: 0.20
+      avoids_broad_rewrite: 0.20
+
+hinting:
+  curriculum_file: templates/hint_curriculum.yaml
+
+reward:
+  shaping_file: templates/provenance_reward.yaml
+
+algorithm:
+  name: grpo
+  alternatives:
+    - gigpo
+  group_size: 8
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  max_prompt_tokens: 8192
+  max_response_tokens: 4096
+  kl_penalty:
+    enabled: true
+    beta: 0.02
+  advantage_normalization: task_group
+
+training:
+  optimizer: muonclip
+  learning_rate: 2.0e-7
+  adamw_fallback_lr_ratio: 0.1
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  max_steps: 5000
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  bf16: true
+  gradient_checkpointing: true
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  save_steps: 250
+  logging_steps: 5
+
+monitoring:
+  wandb_project: lplm-additional-posttrain
+  log_hint_reliance: true
+  log_provenance_metrics: true
+  log_patch_stats: true
+  log_test_results: true
+  log_moe_health: true
+
+promotion_gate:
+  human_verified_pass_at_1_min_delta: 0.02
+  hint_reliance_max_ratio: 0.50
+  synthetic_to_human_success_gap_max: 0.20
+  max_patch_lines_p95: 250
+  max_files_touched_p95: 8
+  reject_if_test_weakening_detected: true

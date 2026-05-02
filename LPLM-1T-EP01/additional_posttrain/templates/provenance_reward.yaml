@@ -1,0 +1,49 @@
+# Provenance-discounted reward shaping template.
+reward:
+  provenance_caps:
+    human_verified: 1.0
+    synthetic: 0.6
+
+  plan_reward:
+    enabled: true
+    weight: 0.10
+    max_score: 1.0
+    components:
+      reproduces_failure: 0.20
+      localizes_relevant_area: 0.20
+      proposes_minimal_edit: 0.20
+      includes_verification: 0.20
+      avoids_broad_rewrite: 0.20
+
+  execution_success:
+    type: private_tests_pass
+    public_test_weight: 0.0
+    private_test_weight: 1.0
+
+  hint_discounts:
+    none: 1.0
+    conceptual: 0.6
+    localized: 0.4
+    procedural: 0.2
+    failure: 0.0
+
+  penalties:
+    delete_or_weaken_tests: 1.0
+    fabricated_tool_output: 1.0
+    unsafe_command: 1.0
+    syntax_failure: 0.2
+    timeout: 0.2
+    broad_unrelated_edit: 0.3
+    hardcoded_expected_output: 0.6
+
+  formula:
+    execution_reward: "provenance_cap * hint_discount * success_score"
+    final_reward: "clamp(execution_reward + plan_weight * plan_score - penalties, -1.0, provenance_cap)"
+
+advantage:
+  method: group_relative
+  epsilon: 1.0e-6
+  gigpo:
+    enabled: false
+    outer_group: provenance
+    inner_group: task_id

@@ -1,0 +1,83 @@
+# Dataset mixture template for CPT and SFT.
+mixture_name: ep01_post_training_mix_v1
+format: jsonl
+tokenizer: kimi
+chat_template: templates/chat_template.kimi.jinja
+
+quality_filters:
+  min_quality_score: 0.85
+  require_license: true
+  deduplicate:
+    enabled: true
+    method: minhash
+    threshold: 0.82
+  drop_if:
+    - empty_response
+    - malformed_chat_roles
+    - invalid_tool_call_json
+    - unresolved_placeholder
+
+splits:
+  train: 0.995
+  validation: 0.005
+  split_by: source_document_id
+
+cpt_sources:
+  - name: general_replay
+    path: data/cpt/general_replay/*.jsonl
+    weight: 0.40
+    text_column: text
+
+  - name: code
+    path: data/cpt/code/*.jsonl
+    weight: 0.20
+    text_column: text
+
+  - name: math_symbolic
+    path: data/cpt/math/*.jsonl
+    weight: 0.15
+    text_column: text
+
+  - name: tools_and_docs
+    path: data/cpt/tools_docs/*.jsonl
+    weight: 0.10
+    text_column: text
+
+  - name: multilingual_quality
+    path: data/cpt/multilingual/*.jsonl
+    weight: 0.10
+    text_column: text
+
+  - name: target_domain
+    path: data/cpt/domain/*.jsonl
+    weight: 0.05
+    text_column: text
+
+sft_sources:
+  - name: general_instruction
+    path: data/sft/general/*.jsonl
+    weight: 0.30
+
+  - name: multi_turn
+    path: data/sft/multi_turn/*.jsonl
+    weight: 0.15
+
+  - name: code
+    path: data/sft/code/*.jsonl
+    weight: 0.15
+
+  - name: math_reasoning
+    path: data/sft/math/*.jsonl
+    weight: 0.15
+
+  - name: tool_use
+    path: data/sft/tools/*.jsonl
+    weight: 0.10
+
+  - name: safety_refusal
+    path: data/sft/safety/*.jsonl
+    weight: 0.10
+
+  - name: base_replay
+    path: data/sft/replay/*.jsonl
+    weight: 0.05

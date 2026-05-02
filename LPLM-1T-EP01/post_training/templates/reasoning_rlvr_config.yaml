@@ -1,0 +1,85 @@
+# Reasoning RL with verifiable rewards template.
+stage:
+  id: reasoning_rlvr_v1
+  type: reasoning_rl_verifiable_rewards
+  description: GRPO/RLVR-style training for math, code, and structured tasks.
+
+model:
+  input_checkpoint: outputs/post_training/pref_v1
+  reference_checkpoint: outputs/post_training/pref_v1
+  output_dir: outputs/post_training/reasoning_rlvr_v1
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  chat_template: templates/chat_template.kimi.jinja
+
+algorithm:
+  name: grpo
+  group_size: 8
+  temperature: 0.8
+  top_p: 0.95
+  max_prompt_length: 4096
+  max_completion_length: 2048
+  kl_penalty:
+    enabled: true
+    beta: 0.02
+  advantage_normalization: group_relative
+
+reward:
+  reward_sources:
+    - name: exact_math
+      type: exact_match
+      weight: 0.35
+      path: data/rlvr/math/*.jsonl
+
+    - name: code_tests
+      type: unit_tests
+      weight: 0.35
+      path: data/rlvr/code/*.jsonl
+      sandbox: true
+
+    - name: structured_answers
+      type: schema_match
+      weight: 0.15
+      path: data/rlvr/structured/*.jsonl
+
+    - name: tool_grounding
+      type: tool_result_grounding
+      weight: 0.15
+      path: data/rlvr/tools/*.jsonl
+
+  penalties:
+    invalid_format: -0.2
+    unsafe_content: -1.0
+    fabricated_tool_result: -1.0
+    timeout: -0.5
+
+training:
+  optimizer: muonclip
+  learning_rate: 2.0e-7
+  adamw_fallback_lr_ratio: 0.1
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  max_steps: 3000
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  bf16: true
+  gradient_checkpointing: true
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  save_steps: 250
+  logging_steps: 5
+
+monitoring:
+  wandb_project: lplm-post-training
+  log_reward_by_source: true
+  log_pass_at_k: true
+  log_single_sample_accuracy: true
+  log_kl: true
+  log_format_failures: true
+
+promotion_gate:
+  eval_template: eval_gate.yaml
+  must_pass:
+    - verified_accuracy_improves
+    - single_sample_accuracy_improves
+    - no_reward_hacking
+    - language_quality_stable

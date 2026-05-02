@@ -1,0 +1,57 @@
+# End-to-end post-training manifest template for LPLM-1T-EP01.
+model:
+  name: LPLM-1T-EP01
+  base_checkpoint: outputs/lplm-ep01-fineweb/checkpoint-final
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  chat_template: LPLM-1T-EP01/post_training/templates/chat_template.kimi.jinja
+  dtype: bf16
+
+tracking:
+  wandb_project: lplm-post-training
+  wandb_entity: null
+  run_group: ep01-post-training-v1
+  log_model: checkpoint
+
+global_training:
+  optimizer: muonclip
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  gradient_checkpointing: true
+  save_safetensors: true
+  seed: 1337
+
+stages:
+  - id: cpt_domain_v1
+    template: cpt_config.yaml
+    input_checkpoint: outputs/lplm-ep01-fineweb/checkpoint-final
+    output_checkpoint: outputs/post_training/cpt_domain_v1
+    promote_if_gate_passes: true
+
+  - id: sft_instruct_v1
+    template: sft_config.yaml
+    input_checkpoint: outputs/post_training/cpt_domain_v1
+    output_checkpoint: outputs/post_training/sft_instruct_v1
+    promote_if_gate_passes: true
+
+  - id: pref_dpo_or_simpo_v1
+    template: preference_config.yaml
+    input_checkpoint: outputs/post_training/sft_instruct_v1
+    output_checkpoint: outputs/post_training/pref_v1
+    promote_if_gate_passes: true
+
+  - id: reasoning_rlvr_v1
+    template: reasoning_rlvr_config.yaml
+    input_checkpoint: outputs/post_training/pref_v1
+    output_checkpoint: outputs/post_training/reasoning_rlvr_v1
+    promote_if_gate_passes: true
+
+  - id: safety_tool_polish_v1
+    template: preference_config.yaml
+    input_checkpoint: outputs/post_training/reasoning_rlvr_v1
+    output_checkpoint: outputs/post_training/safety_tool_polish_v1
+    promote_if_gate_passes: true
+
+promotion_gate:
+  template: eval_gate.yaml
+  require_all_must_pass: true
+  archive_failed_candidates: true

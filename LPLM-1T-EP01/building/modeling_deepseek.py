@@ -437,6 +437,8 @@ class MoEGate(nn.Module):
         import torch.nn.init as init
 
         init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if hasattr(self, "e_score_correction_bias"):
+            init.zeros_(self.e_score_correction_bias)
 
     def forward(self, hidden_states):
         bsz, seq_len, h = hidden_states.shape
@@ -453,7 +455,6 @@ class MoEGate(nn.Module):
 
         ### select top-k experts
         if self.topk_method == "noaux_tc":
-            assert not self.training
             scores_for_choice = scores.view(
                 bsz * seq_len, -1) + self.e_score_correction_bias.unsqueeze(0)
             group_scores = (scores_for_choice.view(
@@ -532,13 +533,38 @@ class DeepseekV3MoE(nn.Module):
         orig_shape = hidden_states.shape
         topk_idx, topk_weight = self.gate(hidden_states)
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
-        flat_topk_idx = topk_idx.view(-1)
-        if not self.training:
+        if self.training:
+            y = self.moe_train(hidden_states, topk_idx,
+                               topk_weight).view(*orig_shape)
+        else:
             y = self.moe_infer(hidden_states, topk_idx,
                                topk_weight).view(*orig_shape)
         if self.config.n_shared_experts is not None:
             y = y + self.shared_experts(identity)
         return y
+
+    def moe_train(self, x, topk_ids, topk_weight):
+        if self.ep_size > 1:
+            raise NotImplementedError(
+                "MoE training with ep_size > 1 needs a differentiable "
+                "expert-parallel route; use ep_size=1 for the current "
+                "training script.")
+
+        final_out = torch.zeros_like(x)
+        for expert_idx, expert in enumerate(self.experts):
+            if expert is None:
+                continue
+            token_idx, route_idx = torch.where(topk_ids == expert_idx)
+            if token_idx.numel() == 0:
+                continue
+
+            expert_in = x.index_select(0, token_idx)
+            expert_out = expert(expert_in)
+            route_weight = topk_weight[token_idx, route_idx].unsqueeze(-1)
+            weighted_out = expert_out * route_weight.to(expert_out.dtype)
+            final_out.index_add_(0, token_idx, weighted_out.to(final_out.dtype))
+
+        return final_out
 
     @torch.no_grad()
     def moe_infer(self, x, topk_ids, topk_weight):
@@ -812,6 +838,9 @@ class DeepseekV3Attention(nn.Module):
         attn_weights = (
             torch.matmul(query_states, key_states.transpose(2, 3)) *
             self.softmax_scale)
+        if self.training:
+            self._last_qk_max_per_head = attn_weights.detach().amax(
+                dim=(0, 2, 3)).float().cpu()
 
         if attn_weights.size() != (bsz, self.num_heads, q_len, kv_seq_len):
             raise ValueError(

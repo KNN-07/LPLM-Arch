@@ -1,0 +1,69 @@
+# Supervised fine-tuning template.
+stage:
+  id: sft_instruct_v1
+  type: supervised_fine_tuning
+  description: Instruction, chat, tool-use, code, math, and safety SFT.
+
+model:
+  input_checkpoint: outputs/post_training/cpt_domain_v1
+  output_dir: outputs/post_training/sft_instruct_v1
+  train_scope: text
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  chat_template: templates/chat_template.kimi.jinja
+
+data:
+  mixture_file: templates/data_mixture.yaml
+  sources_key: sft_sources
+  schema: conversation_jsonl
+  max_seq_length: 8192
+  mask_user_tokens: true
+  train_on_assistant_only: true
+  preserve_tool_boundaries: true
+  validation_split: validation
+
+training:
+  optimizer: muonclip
+  learning_rate: 1.0e-5
+  adamw_fallback_lr_ratio: 0.1
+  weight_decay: 0.05
+  warmup_ratio: 0.03
+  num_train_epochs: 1
+  max_steps: null
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  bf16: true
+  gradient_checkpointing: true
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  save_steps: 500
+  logging_steps: 10
+
+behavior_targets:
+  answer_style: direct
+  use_kimi_roles: true
+  tool_calls_must_be_schema_valid: true
+  avoid_unrequested_reasoning_trace: true
+  refusals:
+    precise_boundaries: true
+    offer_safe_alternative: true
+
+monitoring:
+  wandb_project: lplm-post-training
+  log_moe:
+    expert_load: true
+    routing_entropy: true
+    dead_experts: true
+  heldout_buckets:
+    - general_instruction
+    - code
+    - math_reasoning
+    - tool_use
+    - safety_refusal
+
+promotion_gate:
+  eval_template: eval_gate.yaml
+  must_pass:
+    - instruction_following_improves
+    - tool_call_validity
+    - refusal_precision
+    - no_core_capability_regression

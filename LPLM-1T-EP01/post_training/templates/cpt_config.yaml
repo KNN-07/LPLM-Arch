@@ -1,0 +1,53 @@
+# Continued pretraining template.
+stage:
+  id: cpt_domain_v1
+  type: continued_pretraining
+  description: Domain continued pretraining after FineWeb base pretraining.
+
+model:
+  input_checkpoint: outputs/lplm-ep01-fineweb/checkpoint-final
+  output_dir: outputs/post_training/cpt_domain_v1
+  train_scope: text
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+
+data:
+  mixture_file: templates/data_mixture.yaml
+  sources_key: cpt_sources
+  sequence_packing: true
+  block_size: 8192
+  add_bos: true
+  add_eos: true
+  validation_split: validation
+
+training:
+  optimizer: muonclip
+  learning_rate: 2.0e-5
+  adamw_fallback_lr_ratio: 0.1
+  weight_decay: 0.1
+  warmup_ratio: 0.02
+  max_steps: 20000
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  bf16: true
+  gradient_checkpointing: true
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  save_steps: 1000
+  logging_steps: 10
+
+monitoring:
+  wandb_project: lplm-post-training
+  log_loss_by_source: true
+  log_moe:
+    expert_load: true
+    routing_entropy: true
+    dead_experts: true
+    gate_saturation: true
+  log_tokens_per_second: true
+
+promotion_gate:
+  eval_template: eval_gate.yaml
+  must_pass:
+    - validation_loss_no_general_regression
+    - no_router_collapse
+    - qk_logits_stable

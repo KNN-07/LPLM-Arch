@@ -1,0 +1,48 @@
+# Hint curriculum template for agentic SWE RL.
+hinting:
+  lookup_mode: static_database
+  runtime_llm_hinting: false
+  reset_repo_between_attempts: true
+
+attempts:
+  - attempt: 1
+    hint_level: none
+    hint_key: null
+    autonomy_discount: 1.0
+    max_steps: 30
+    success_reward_multiplier: 1.0
+
+  - attempt: 2
+    hint_level: conceptual
+    hint_key: conceptual
+    autonomy_discount: 0.6
+    max_steps: 30
+    success_reward_multiplier: 0.6
+
+  - attempt: 3
+    hint_level: localized
+    hint_key: localized
+    autonomy_discount: 0.4
+    max_steps: 25
+    success_reward_multiplier: 0.4
+
+  - attempt: 4
+    hint_level: procedural
+    hint_key: procedural
+    autonomy_discount: 0.2
+    max_steps: 20
+    success_reward_multiplier: 0.2
+
+failure:
+  reward: -0.1
+  terminal_statuses:
+    - failed_tests
+    - timeout
+    - unsafe_action
+    - invalid_patch
+
+hint_quality_filters:
+  require_grounding_diff: true
+  require_files_touched: true
+  reject_if_mentions_exact_reward: true
+  reject_if_reveals_provenance: true

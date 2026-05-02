@@ -1,0 +1,78 @@
+# Preference optimization template.
+stage:
+  id: pref_dpo_or_simpo_v1
+  type: preference_optimization
+  description: DPO, SimPO, or KTO after SFT.
+
+model:
+  input_checkpoint: outputs/post_training/sft_instruct_v1
+  reference_checkpoint: outputs/post_training/sft_instruct_v1
+  output_dir: outputs/post_training/pref_v1
+  tokenizer_name_or_path: LPLM-1T-EP01/building/source/tokenizer
+  chat_template: templates/chat_template.kimi.jinja
+
+method:
+  name: simpo
+  allowed:
+    - dpo
+    - simpo
+    - kto
+  dpo:
+    beta: 0.1
+    reference_free: false
+  simpo:
+    beta: 2.0
+    gamma_beta_ratio: 0.5
+    reference_free: true
+  kto:
+    beta: 0.1
+    desirable_weight: 1.0
+    undesirable_weight: 1.0
+
+data:
+  schema:
+    dpo: preference_pair_jsonl
+    simpo: preference_pair_jsonl
+    kto: binary_feedback_jsonl
+  train_paths:
+    - data/preference/helpfulness/*.jsonl
+    - data/preference/code/*.jsonl
+    - data/preference/tool_use/*.jsonl
+    - data/preference/safety/*.jsonl
+  validation_paths:
+    - data/preference/validation/*.jsonl
+  hard_negative_sources:
+    - current_sft_model_samples
+    - tool_call_failures
+    - safety_boundary_failures
+
+training:
+  optimizer: muonclip
+  learning_rate: 5.0e-7
+  adamw_fallback_lr_ratio: 0.1
+  weight_decay: 0.02
+  warmup_ratio: 0.05
+  max_steps: 4000
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  bf16: true
+  gradient_checkpointing: true
+  qk_clip: true
+  qk_clip_threshold: 100.0
+  save_steps: 500
+  logging_steps: 10
+
+monitoring:
+  wandb_project: lplm-post-training
+  log_preference_accuracy: true
+  log_margin_by_bucket: true
+  log_length_bias: true
+  log_refusal_false_positive_rate: true
+
+promotion_gate:
+  eval_template: eval_gate.yaml
+  must_pass:
+    - pairwise_win_rate_improves
+    - safety_false_positives_stable
+    - tool_call_validity_stable
+    - factuality_no_regression
